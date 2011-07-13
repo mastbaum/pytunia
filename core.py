@@ -1,13 +1,20 @@
 # core classes and stuff
 
+class TarFailedException(Exception)
+    def __init__(self, target):
+        self.target = target
+    def __str__(self):
+        return repr(self.target)
+
 class Test:
     '''hmm'''
     def __init__(self, name):
         self.name = name
         self.results = {}
-    def execute(self):
+   def execute(self):
         '''system calls to run this task. this should be overridden in
         subclasses of Task.'''
+        pass
     def results_stringify(self):
         # need a map<string,string> for thrift
         results_str = {}
@@ -27,10 +34,4 @@ def system(cmd, wd=None):
         print cmd
         return 0
     return subprocess.call([cmd], executable='/bin/bash', shell=True)
-
-class TarFailedException(Exception)
-    def __init__(self, target):
-        self.target = target
-    def __str__(self):
-        return repr(self.target)
 
