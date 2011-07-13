@@ -1,11 +1,6 @@
 #!/usr/bin/env python2.5
 
-# tasks.py
-#
-# Definitions for pytunia tasks
-#
-# Andy Mastbaum (mastbaum@hep.upenn.edu), June 2011
-#
+# leftovers
 
 class Task:
     '''hmm'''
@@ -36,6 +31,21 @@ acrylic_attenuation = rattest()
 def cppcheck:
 
     
+    # wtf?
+    def rattest(wd, test_name):
+        # factor all of this out
+        if ret_code == 0:
+            cd_cmd = ' '.join(['cd', wd])
+            tar_cmd = ' '.join(['tar', 'czvf', output_name, test_name])
+            cmd = ' && '.join([cd_cmd, tar_cmd])
+            ret_code = system(cmd)
+            if ret_code == 0:
+                tarball_file = os.path.join(wd, output_name)
+                return open(tarball_file)
+            else:
+                raise TarFailedException(output_name)
+        else:
+            raise TestFailedException(test_name)
 
 
 
