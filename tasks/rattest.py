@@ -32,10 +32,12 @@ def svn_co(url, target, username=None, password=None, wd=None):
         return None
 
 # main task function
-def execute(svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options='-j6'):
+def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options='-j6'):
     '''check out a revision with svn, build it with scons, and return back the
     build log.
     '''
+    if testname is None:
+        return {'success': False, 'reason': 'missing test name'}
     if not revnumber:
         return {'success': False, 'reason': 'missing revision number'}
     if not svn_url:
@@ -57,18 +59,28 @@ def execute(svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_op
     # build with scons
     results = {'success': True, 'attachments': []}
     system('./configure', wcpath)
-    ret = system('source %s && scons %s &> build_log.txt' % (env_file, scons_options), wcpath)
+    ret = system('source %s && scons %s' % (env_file, scons_options), wcpath)
     results['scons_returncode'] = ret
     if ret != 0:
         results['success'] = False
         results['reason'] = 'build failed'
-
-    # attach log to results
-    attachment = {}
-    with open('%s/build_log.txt' % wcpath, 'r') as f:
-        attachment = {'filename': 'build_log.txt', 'contents': f.read(), 'link_name': 'Build Log'}
-
-    results['attachments'].append(attachment)
+    else:
+        # run the requested rattest
+        testpath = os.path.join(wcpath, 'test', 'full')
+        ret = system('source %s && rattest -t %s' % (env_file, testname), testpath)
+        if ret != 0:
+            results['success'] = False
+            results['reason'] = 'rattest failed'
+        else:
+            # attach results
+            for root, dirs, files in os.walk(os.path.join(testpath,testname), topdown=False):
+                for name in files:
+                    fname = os.path.join(root, name)
+                    with open(fname,'r') as f:
+                        attachment = {'filename': fname, 'contents': f.read()}
+                        if fname == 'results.html':
+                            attachment['link_name'] = 'rattest Results'
+                        results['attachments'].append(attachment)
 
     # delete the working directory
     shutil.rmtree(os.path.abspath(wd))
@@ -81,5 +93,5 @@ if __name__ == '__channelexec__':
     channel.send(results)
 
 if __name__ == '__main__':
-    print execute(svn_url=sys.argv[1], revnumber=sys.argv[2])
+    print execute(testname=sys.argv[1], svn_url=sys.argv[2], revnumber=sys.argv[3])
 
