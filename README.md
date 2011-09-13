@@ -37,8 +37,8 @@ Adding revisions
 
 pytunia deals with revisions (records) and the set of tests to be run for each (tasks). POSTing of record documents and the associated task documents should be done in a post-commit hook on your version control system. A post-commit hook for SVN is provided in `bin`. The format for the pytunia document types are as follows.
 
-Record (revision)
-`````````````````
+#### Record (revision) ####
+
     {
         "_id": "[revision name or number]",
         "type": "record",
@@ -55,8 +55,8 @@ Example:
         "created": 1315347385
     }
 
-`build` and `cppcheck` Tasks
-````````````````````````````
+#### `build` and `cppcheck` Tasks ####
+
     {
         "_id": [unique uuid],
         "type": "task",
