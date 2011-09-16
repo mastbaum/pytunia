@@ -57,7 +57,11 @@ exports.tasks_by_record = {
 exports.tasks_by_name = {
     map: function(doc) {
         if (doc.type == 'task') {
-            emit([doc.name], doc);
+            // rattests are special
+            if (doc.kwargs && doc.kwargs.testname)
+                emit([doc.kwargs.testname], doc);
+            else
+                emit([doc.name], doc);
         }
     }
 };

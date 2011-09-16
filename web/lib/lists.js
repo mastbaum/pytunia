@@ -44,6 +44,9 @@ exports.record = function (head, req) {
 
     // subsequent are associated tasks
     while (row = getRow()) {
+        if (row.value.kwargs)
+            if (row.value.kwargs.testname)
+                row.value.name = row.value.kwargs.testname;
         if ('results' in row.value) {
             row['results_string'] = JSON.stringify(row.value.results, null, 1);
             if (!row.value.results.success)
@@ -81,7 +84,10 @@ exports.task = function (head, req) {
     var task_name = ''
     var row, rows = [];
     while (row = getRow()) {
-        task_name = row.value.name
+        if (row.value.kwargs && row.value.kwargs.testname)
+            task_name = row.value.kwargs.testname
+        else
+            task_name = row.value.name
         if ('results' in row.value)
             row['results_string'] = JSON.stringify(row.value.results, null, 1)
         rows.push(row);
