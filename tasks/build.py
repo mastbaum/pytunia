@@ -32,7 +32,7 @@ def svn_co(url, target, username=None, password=None, wd=None):
         return None
 
 # main task function
-def execute(svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options='-j6'):
+def execute(svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options=''):
     '''check out a revision with svn, build it with scons, and return back the
     build log.
     '''

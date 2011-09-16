@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import uuid
 import subprocess
 from xml.etree.ElementTree import ElementTree
@@ -50,7 +51,7 @@ def execute(svn_url=None, svn_user=None, svn_pass=None, revnumber=None):
 
     # run cppcheck
     results = {'success': True, 'attachments': []}
-    ret = system('cppcheck src -j2 --enable=style --enable=unusedFunction --quiet --xml &> cppcheck.xml', wcpath)
+    ret = system('cppcheck src -j2 --enable=style --quiet --xml &> cppcheck.xml', wcpath)
     results['cppcheck_returncode'] = ret
 
     # parse xml into formatted html page
@@ -89,7 +90,6 @@ def execute(svn_url=None, svn_user=None, svn_pass=None, revnumber=None):
 
     # delete the working directory
     shutil.rmtree(os.path.abspath(wd))
-    shutil.rmdir(os.path.abspath(wd))
 
     return results
 

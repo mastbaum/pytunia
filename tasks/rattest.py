@@ -32,7 +32,7 @@ def svn_co(url, target, username=None, password=None, wd=None):
         return None
 
 # main task function
-def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options='-j6'):
+def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options='-j2'):
     '''check out a revision with svn, build it with scons, and return back the
     build log.
     '''
@@ -59,7 +59,7 @@ def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass
     # build with scons
     results = {'success': True, 'attachments': []}
     system('./configure', wcpath)
-    ret = system('source %s && scons %s' % (env_file, scons_options), wcpath)
+    ret = system('source %s && scons %s &> build_log.txt' % (env_file, scons_options), wcpath)
     results['scons_returncode'] = ret
     if ret != 0:
         results['success'] = False
@@ -71,16 +71,16 @@ def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass
         if ret != 0:
             results['success'] = False
             results['reason'] = 'rattest failed'
-        else:
-            # attach results
-            for root, dirs, files in os.walk(os.path.join(testpath,testname), topdown=False):
-                for name in files:
-                    fname = os.path.join(root, name)
-                    with open(fname,'r') as f:
-                        attachment = {'filename': fname, 'contents': f.read()}
-                        if fname == 'results.html':
-                            attachment['link_name'] = 'rattest Results'
-                        results['attachments'].append(attachment)
+
+        # attach results
+        for root, dirs, files in os.walk(os.path.join(testpath,testname), topdown=False):
+            for name in files:
+                fname = os.path.join(root, name)
+                with open(fname,'r') as f:
+                    attachment = {'filename': fname, 'contents': f.read()}
+                    if fname == 'results.html':
+                        attachment['link_name'] = 'rattest Results'
+                    results['attachments'].append(attachment)
 
     # delete the working directory
     shutil.rmtree(os.path.abspath(wd))
