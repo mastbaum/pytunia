@@ -10,21 +10,20 @@ def system(cmd, wd=None):
     wd in a bash shell, returning the exit code.'''
     if wd:
         cmd = ('cd %s && ' % wd) + cmd
-    print cmd
     return subprocess.call([cmd], executable='/bin/bash', shell=True)
 
-def svn_co(url, target, username=None, password=None, wd=None):
+def svn_co(url, rev, target, username=None, password=None, wd=None):
     '''check out a revision from an svn server, optionally providing a
     username and password. the arguments are parsed as::
 
-        cd [wd] && svn co [url] [target] --username=[username] \
+        cd [wd] && svn co [url] -r [rev] [target] --username=[username] \
     --password=[password]
     '''
     if wd:
         target = os.path.join(wd, target)
     target = os.path.abspath(target)
     if not os.path.exists(target):
-        cmd = ' '.join(['svn co', url, target])
+        cmd = ' '.join(['svn co', url, '-r', rev, target])
         if username: cmd = ' '.join([cmd, '--username=%s' % username])
         if password: cmd = ' '.join([cmd, '--password=%s' % password])
         return system(cmd)
@@ -50,7 +49,7 @@ def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass
     os.mkdir(wd)
 
     # get the code
-    ret = svn_co(svn_url, revnumber, username=svn_user, password=svn_pass, wd=wd)
+    ret = svn_co(svn_url, revnumber, revnumber, username=svn_user, password=svn_pass, wd=wd)
     if ret is None or ret != 0:
         return {'success': False, 'reason': 'svn co failed'}
     wcpath = os.path.abspath(os.path.join(wd, revnumber))
