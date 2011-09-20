@@ -67,7 +67,7 @@ def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass
     else:
         # run the requested rattest
         testpath = os.path.join(wcpath, 'test', 'full')
-        ret = system('source %s && rattest -t %s' % (env_file, testname), testpath)
+        ret = system('source %s && rattest -t %s &> /dev/null' % (env_file, testname), testpath)
         if ret != 0:
             results['success'] = False
             results['reason'] = 'rattest failed'
@@ -76,9 +76,10 @@ def execute(testname=None, svn_url=None, revnumber=None, svn_user=None, svn_pass
         for root, dirs, files in os.walk(os.path.join(testpath,testname), topdown=False):
             for name in files:
                 fname = os.path.join(root, name)
+                basename = os.path.basename(fname)
                 with open(fname,'r') as f:
-                    attachment = {'filename': fname, 'contents': f.read()}
-                    if fname == 'results.html':
+                    attachment = {'filename': basename, 'contents': f.read()}
+                    if basename == 'results.html':
                         attachment['link_name'] = 'rattest Results'
                     results['attachments'].append(attachment)
 

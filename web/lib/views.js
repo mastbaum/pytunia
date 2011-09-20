@@ -12,8 +12,10 @@ exports.summary = {
     },
     // must use group_level 1 for meaningful output
     reduce: function(keys, values) {
+return null;
+/*
         var ntasks = 0
-        output = {name: '', description: '', task_coumt: 0, percents: {success: 0, failed: 0, waiting: 0, inprogress: 0}};
+        output = {name: '', description: '', task_count: 0, percents: {success: 0, failed: 0, waiting: 0, inprogress: 0}};
         for (idx in values) {
             if (values[idx].type == "record")
                 if(!output.name) {
@@ -39,7 +41,9 @@ exports.summary = {
         for (item in output.percents)
             output.percents[item] = output.percents[item] * 100 / ntasks;
         return output;
+*/
     }
+
 };
 
 // get tasks for a given record

@@ -38,5 +38,6 @@ exports.record = new Type('record', {
             widget: widgets.textarea({cols: 40, rows: 10})
         }),
     },
+    allow_extra_fields: true
 });
 
