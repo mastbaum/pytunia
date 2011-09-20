@@ -1,62 +1,96 @@
 #!/usr/bin/env python
 
+import sys
+import os
+import subprocess
 import time
 import uuid
-import couchdb
+import json
 
-description_file = 'rat_svn_log_parsed'
-meta = {}
-with open(description_file, 'r') as f:
-    for line in f.readlines():
-        l = line.split('////')
-        rev = int(l[0])
-        author = l[1]
-        description = l[2]
-        meta[rev] = {'author': author, 'description': description}
+def parse_svn_log(svn_url):
+    '''extract revision number, author, and description from svn log output,
+    and turn it into a dictionary.
+    '''
+    revisions = {}
+    svn_log = subprocess.Popen(['svn', 'log', svn_url], stdout=subprocess.PIPE).communicate()[0]
+    with open('svn_log_temp','w') as f:
+        f.write(svn_log)
+    with open('svn_log_temp','r') as f:
+        line = f.readline()
+        while line:
+            # better done with regex...
+            if line[:10] == ('-' * 10):
+                line = f.readline()
+                if line == '':
+                    break
+                meta = [i.strip(' ') for i in line.split('|')]
+                rev = int(meta[0][1:])
+                author = meta[1]
+                revisions[rev] = {'author': author}
 
-svn_url = "https://www.snolab.ca/snoplus/svn/sasquatch/dev/rat"
-tasknames = ['geoprint', 'light_yield', 'optics_response']
+                # burn a few lines
+                line = f.readline()
+                line = f.readline()
+                description = []
+                while line[:10] != ('-' * 10):
+                    description.append(line)
+                    line = f.readline()
 
-jsonfile = open('all_revs.json','w')
-jsonfile.write('[\n')
+                description = '\n'.join(description).rstrip('\n')
+                revisions[rev]['description'] = description
 
-tasknames.append('acrylic_attenuation')
-tasknames.append('multipoint_uniform')
-tasknames.append('multipoint_table')
-tasknames.append('noise_global')
-tasknames.append('fitcentroid')
+    os.remove('svn_log_temp')
+    return revisions
 
-for rev in range(1,624):
-    if rev not in meta:
-        continue
+def main(svn_url, start=1, stop=None):
+    '''loop over the requested revisions to generate json to load into the
+    pytunia database.
+    '''
+    revisions = parse_svn_log(svn_url)
+    if stop is None:
+        stop = max(revisions)
 
-#    if rev == 104:
-#        tasknames.append('acrylic_attenuation')
-#    if rev == 112:
-#        tasknames.append('multipoint_uniform')
-#        tasknames.append('multipoint_table')
-#    if rev == 189:
-#        tasknames.append('noise_global')
-#    if rev == 511:
-#        tasknames.append('fitcentroid')
-    rev_name = 'r' + str(rev)
-    description  = meta[rev]['description']
-    if not description: description = ''
-    author = meta[rev]['author']
-    record = {"_id": rev_name, "type": "record",  "description": description, "created": time.time(), 'author': author}
+    start = int(start)
+    stop = int(stop)
 
-    cppcheck = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "cppcheck", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url}, "record_id": rev_name}
-    #print record
-    #print cppcheck
-    jsonfile.write(str(record) + ',')
-    jsonfile.write(str(cppcheck) + ',')
+    docs = []
+    for rev in range(start, stop):
+        # revisions can be missing
+        if rev not in revisions:
+            continue
 
-    for taskname in ['acrylic_attenuation', 'fitcentroid', 'geoprint', 'light_yield', 'multipoint_table', 'multipoint_uniform', 'noise_global', 'optics_response']:
-        taskid = uuid.uuid4().get_hex()
-        task = {"_id": taskid, "type": "task", "name": "rattest", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url, "testname": taskname}, "record_id": rev_name}
-        #print task
-        jsonfile.write(str(task) + ',')
+        # get task names with svn list
+        tasknames = []
+        for item in subprocess.Popen(['svn', 'list', svn_url + '/test/full', '-r', str(rev)], stdout=subprocess.PIPE).communicate()[0].split():
+            tasknames.append(item.rstrip('/'))
 
-jsonfile.write('\n]')
-jsonfile.close()
+        # record (revision) document
+        rev_name = 'r' + str(rev)
+        description  = revisions[rev]['description']
+        if not description:
+            description = ' '
+        author = revisions[rev]['author']
+        record = {"_id": rev_name, "type": "record",  "description": description, "created": time.time(), 'author': author}
+        docs.append(record)
+
+        # cppcheck task document
+        cppcheck = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "cppcheck", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url}, "record_id": rev_name}
+        docs.append(cppcheck)
+
+        # rattest task documents
+        for taskname in tasknames:
+            taskid = uuid.uuid4().get_hex()
+            task = {"_id": taskid, "type": "task", "name": "rattest", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url, "testname": taskname}, "record_id": rev_name}
+            docs.append(task)
+
+    docs_json = json.dumps(docs)
+
+    print docs_json
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print 'Usage:', sys.argv[0], '<svn url> [start_rev=1] [end_rev=HEAD]'
+        sys.exit(1)
+    else:
+        main(*sys.argv[1:])
 
