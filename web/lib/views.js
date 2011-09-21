@@ -51,9 +51,12 @@ return null;
 exports.tasks_by_record = {
     map: function(doc) {
     if (doc.type == 'record')
-        emit([doc._id, 0], doc);
+        emit([doc._id, null, 0], doc);
     if (doc.type == 'task')
-        emit([doc.record_id, 1], doc);
+        if (doc.kwargs && doc.kwargs.testname)
+            emit([doc.record_id, doc.kwargs.testname, 1], doc);
+        else
+            emit([doc.record_id, doc.name, 1], doc);
     }
 };
 
