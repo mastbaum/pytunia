@@ -56,12 +56,12 @@ exports.index = function (head, req) {
 
     if (req.client) {
         $('#content').html(content);
-        document.title = 'pytunia :: Overview';
+        document.title = 'SNO+ CI :: Overview';
     }
     else {
         return templates.render('base.html', req, {
             content: content,
-            title: 'pytunia :: Overview'
+            title: 'SNO+ CI :: Overview'
         });
     }
 };
@@ -117,12 +117,12 @@ exports.record = function (head, req) {
 
     if (req.client) {
         $('#content').html(content);
-        document.title = 'pytunia :: Overview';
+        document.title = 'SNO+ CI :: Overview';
     }
     else {
         return templates.render('base.html', req, {
             content: content,
-            title: 'pytunia :: Overview'
+            title: 'SNO+ CI :: Overview'
         });
     }
 };
@@ -152,7 +152,7 @@ exports.task = function (head, req) {
         }
         rows.push(row);
     }
-    var title = 'pytunia :: Task Detail: ' + task_name;
+    var title = 'SNO+ CI :: Task Detail: ' + task_name;
 
     var content = templates.render('task.html', req, {
         task_name: task_name,
