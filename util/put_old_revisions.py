@@ -42,7 +42,7 @@ def parse_svn_log(svn_url):
     os.remove('svn_log_temp')
     return revisions
 
-def main(svn_url, start=1, stop=None):
+def main(svn_url, changeset_url_base, start=1, stop=None):
     '''loop over the requested revisions to generate json to load into the
     pytunia database.
     '''
@@ -69,8 +69,9 @@ def main(svn_url, start=1, stop=None):
         description  = revisions[rev]['description']
         if not description:
             description = ' '
+        changeset_url = changeset_url_base + str(rev)
         author = revisions[rev]['author']
-        record = {"_id": rev_name, "type": "record",  "description": description, "created": time.time(), 'author': author}
+        record = {"_id": rev_name, "type": "record",  "description": description, "created": time.time(), 'author': author, 'changeset_url': changeset_url}
         docs.append(record)
 
         # cppcheck task document
@@ -89,7 +90,7 @@ def main(svn_url, start=1, stop=None):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print 'Usage:', sys.argv[0], '<svn url> [start_rev=1] [end_rev=HEAD]'
+        print 'Usage:', sys.argv[0], '<svn url> <changeset base url> [start_rev=1] [end_rev=HEAD]'
         sys.exit(1)
     else:
         main(*sys.argv[1:])
