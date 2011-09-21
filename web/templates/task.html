@@ -8,7 +8,7 @@
   </div>
  </div>
 
- <table width=65% style="text-align:center">
+ <table width=90% style="text-align:center">
   <tr>
    <th style="text-align:center;">Record</th>
    <th style="text-align:center;">Created</th>
@@ -49,11 +49,11 @@
     </td>
     <td>
      {?value.completed}
-      <a href="task.html#results_{value._id}" class="boxy" title="Results">Results</a>
+      {#value.results.attach_links task_id=id}
+       <a href="#" onClick="window.location='/pytunia/{task_id}/{id}'">{name}</a><br/>
+      {/value.results.attach_links}
+      <a href="index.html#results_{value._id}" class="boxy" title="Results">Results (raw)</a>
       <div id="results_{value._id}" style="display:none;background-color:#f5deb3;color:black;padding:15px"><pre style="color:black">{results_string}</pre></div>
-      {#value.attachments record_id=value.record_id}
-       <a href="#" onClick="window.location='../../../../{record_id}/{id}'">{name}</a><br/>
-      {/value.attachments}
      {/value.completed}
     </td>
    </tr>

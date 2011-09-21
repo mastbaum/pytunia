@@ -18,7 +18,7 @@
   </div>
  </div>
 
- <div class="box" style="width:65%">
+ <div class="box" style="width:90%">
   {description}
  </div>
  <table width=65% style="text-align:center;">
@@ -60,11 +60,11 @@
     </td>
     <td>
      {?value.completed}
-      <a href="index.html#results_{value._id}" class="boxy" title="Results">Results</a>
-      <div id="results_{value._id}" style="display:none;background-color:#f5deb3;color:black;padding:15px"><pre style="color:black">{results_string}</pre></div>
       {#value.results.attach_links task_id=id}
-       <br/><a href="#" onClick="window.location='/pytunia/{task_id}/{id}'">{name}</a><br/>
+       <a href="#" onClick="window.location='/pytunia/{task_id}/{id}'">{name}</a><br/>
       {/value.results.attach_links}
+      <a href="index.html#results_{value._id}" class="boxy" title="Results">Results (raw)</a>
+      <div id="results_{value._id}" style="display:none;background-color:#f5deb3;color:black;padding:15px"><pre style="color:black">{results_string}</pre></div>
      {/value.completed}
     </td>
    </tr>

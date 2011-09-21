@@ -5,7 +5,6 @@
 module.exports = [
     {from: '/static/*', to: 'static/*'},
     {from: '/', to: '_list/index/summary', query: {
-        group_level: '1',
         descending: 'true'
     }},
     {from: '/task/:name', to: '_list/task/tasks_by_name', query: {
