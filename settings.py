@@ -18,4 +18,8 @@ node_password_default = 'pw123'
 ## Logging configuration
 # Log file name
 log_file = 'pytunia.log'
+# List of email addresses to notify on test failure
+notify_list = ['mastbaum@hep.upenn.edu']
+# SMTP server required for sending email notifications
+smtp_server = 'localhost'
 
