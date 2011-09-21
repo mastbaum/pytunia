@@ -15,6 +15,8 @@ exports.index = function (head, req) {
             if (row.value.description.length > clip_length)
                 description = description.substring(0, clip_length) + '...';
             records[row.value._id] = {
+                changeset_url: row.value.changeset_url,
+                success: true,
                 name: row.key[0],
                 description: description,
                 ntasks: 0,
@@ -30,8 +32,10 @@ exports.index = function (head, req) {
             if (row.value.completed) {
                 if (row.value.results.success)
                     records[r_id].pass += 1;
-                else
+                else {
                     records[r_id].fail += 1;
+                    records[r_id].success = false;
+                }
             } else {
                 if (row.value.started)
                     records[r_id].inprogress += 1;
@@ -79,6 +83,7 @@ exports.record = function (head, req) {
     name = row.key[0];
     _id = row.value._id;
     description = row.value.description;
+    changeset_url = row.value.changeset_url;
 
     // subsequent are associated tasks
     while (row = getRow()) {
@@ -109,6 +114,7 @@ exports.record = function (head, req) {
     var content = templates.render('record.html', req, {
         name: name,
         description: description,
+        changeset_url: changeset_url,
         pass: pass,
         inprogress: inprogress,
         _id: _id,

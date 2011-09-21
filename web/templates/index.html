@@ -1,17 +1,31 @@
-<h1>All Records</h1>
+<h1>All Revisions</h1>
 
 <div>
  {?rows}
  <table width=90%>
   <tr>
-   <th>Record ID</th>
+   <th></th>
+   <th style="text-align:center">ID</th>
    <th>Comments</th>
    <th>#</th>
    <th>Task Status</th>
   </tr>
    {#rows}
      <tr>
-      <td style="text-align:center;"><a href="{baseURL}/record/{name}">{name}</a></td>
+      <td style="text-align:center;">
+       {?success}
+        <span title="Succeeded" style="display:inline-block;background:green;width:12px;">&nbsp;</span>
+       {:else}
+        <span title="Failed" style="display:inline-block;background:red;width:12px;color:white;font-weight:bold">!</span>
+       {/success}
+      </td>
+      <td style="text-align:center;">
+       {?changeset_url}
+        <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/trac.jpg"></a>
+       {/changeset_url}
+       &nbsp;
+       <a href="{baseURL}/record/{name}">{name}</a>
+      </td>
       <td style="text-align:left;">{description}</td>
       <td style="text-align:center;">{ntasks}</td>
       <td width=65%>
