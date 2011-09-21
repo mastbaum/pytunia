@@ -9,7 +9,8 @@ module.exports = [
     }},
     {from: '/task/:name', to: '_list/task/tasks_by_name', query: {
         // string key must be in list to be properly quoted?
-        key: [':name']
+        startkey: [':name'],
+        endkey: [':name', {}]
     }},
     {from: '/record/:id', to: '_list/record/tasks_by_record', query: {
         startkey: [':id'],
