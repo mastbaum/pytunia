@@ -83,6 +83,7 @@ exports.record = function (head, req) {
     name = row.key[0];
     _id = row.value._id;
     description = row.value.description;
+    author = row.value.author;
     changeset_url = row.value.changeset_url;
 
     // subsequent are associated tasks
@@ -114,6 +115,7 @@ exports.record = function (head, req) {
     var content = templates.render('record.html', req, {
         name: name,
         description: description,
+        author: author,
         changeset_url: changeset_url,
         pass: pass,
         inprogress: inprogress,
