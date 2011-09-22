@@ -37,7 +37,7 @@ def svn_co(url, rev, target, username=None, password=None, wd=None):
     else:
         return None
 
-def execute(svn_url=None, svn_user=None, svn_pass=None, revnumber=None):
+def execute(svn_url=None, diff=None, svn_user=None, svn_pass=None, revnumber=None):
     if not revnumber:
         return {'success': False, 'reason': 'missing revision number'}
     if not svn_url:
@@ -53,7 +53,18 @@ def execute(svn_url=None, svn_user=None, svn_pass=None, revnumber=None):
     ret = svn_co(svn_url, revnumber, revnumber, username=svn_user, password=svn_pass, wd=wd)
     if ret is None or ret != 0:
         return {'success': False, 'reason': 'svn co failed'}
-    wcpath = os.path.join(wd, revnumber)
+    wcpath = os.path.abspath(os.path.join(wd, revnumber))
+
+    # patch if a diff is provided
+    # diffs are uuencoded to be json-friendly
+    if diff is not None:
+        diff_filename = os.path.join(wcpath, wd + '.diff')
+        with open(diff_filename, 'w') as diff_file:
+            diff_file.write(diff.decode('uu'))
+        cmd = 'patch --binary -p0 -i %s' % diff_filename
+        ret = system(cmd, wcpath)
+        if ret != 0:
+            return {'success': False, 'reason': 'failed to apply patch'}
 
     # run cppcheck
     results = {'success': True, 'attachments': []}

@@ -32,7 +32,7 @@ def svn_co(url, rev, target, username=None, password=None, wd=None):
         return None
 
 # main task function
-def execute(svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options=''):
+def execute(svn_url=None, diff=None, revnumber=None, svn_user=None, svn_pass=None, scons_options=''):
     '''check out a revision with svn, build it with scons, and return back the
     build log.
     '''
@@ -53,6 +53,17 @@ def execute(svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_op
         return {'success': False, 'reason': 'svn co failed'}
     wcpath = os.path.abspath(os.path.join(wd, revnumber))
     env_file = os.path.join(wcpath, 'env.sh')
+
+    # patch if a diff is provided
+    # diffs are uuencoded to be json-friendly
+    if diff is not None:
+        diff_filename = os.path.join(wcpath, wd + '.diff')
+        with open(diff_filename, 'w') as diff_file:
+            diff_file.write(diff.decode('uu'))
+        cmd = 'patch --binary -p0 -i %s' % diff_filename
+        ret = system(cmd, wcpath)
+        if ret != 0:
+            return {'success': False, 'reason': 'failed to apply patch'}
 
     # build with scons
     results = {'success': True, 'attachments': []}

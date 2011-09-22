@@ -22,8 +22,10 @@
   <strong>Author:</strong> {author}
   <br/><br/>
   {description}
-  <br/><br/>
-  <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/trac.jpg" style="vertical-align:middle">&nbsp; View in Trac</a>
+  {?changeset_url}
+   <br/><br/>
+   <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/trac.jpg" style="vertical-align:middle">&nbsp; View in Trac</a>
+  {/changeset_url}
  </div>
  <table width=90% style="text-align:center;">
   <tr>

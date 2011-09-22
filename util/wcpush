@@ -1,0 +1,118 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import time
+import uuid
+import base64
+import shutil
+import tempfile
+import httplib
+import json
+
+try:
+    import pysvn
+except ImportError:
+    print 'ratci: Unable to import pysvn (http://pysvn.tigris.org)'
+    sys.exit(1)
+
+try:
+    wcpath = os.path.abspath(os.getenv('RATROOT'))
+    # need to be in $RATROOT to use relative paths in svn diff
+    os.chdir(wcpath)
+except KeyError:
+    print 'ratci: $RATROOT not set'
+    sys.exit(1)
+
+
+def print_status(client, wcpath):
+    '''pretty-print the current status of the working copy'''
+    revnumber = client.info(wcpath).data['revision'].number
+    changes = client.status(wcpath)
+    print 'SVN Status (at r%i)' % revnumber
+    print '    Added:',
+    print [str(f.path) for f in changes if f.text_status == pysvn.wc_status_kind.added]
+    print '    Removed:',
+    print [str(f.path) for f in changes if f.text_status == pysvn.wc_status_kind.deleted]
+    print '    Changed:',
+    print [str(f.path) for f in changes if f.text_status == pysvn.wc_status_kind.modified]
+    print '    Merge conflicts:',
+    print [str(f.path) for f in changes if f.text_status == pysvn.wc_status_kind.conflicted]
+    print '    Ignored files:',
+    print [str(f.path) for f in changes if f.text_status == pysvn.wc_status_kind.unversioned]
+
+def get_changes(client, wcpath):
+    '''get the wc metadata and the current diff (including binaries) as a
+    string
+    '''
+    revnumber = client.info(wcpath).data['revision'].number
+    svn_url = str(client.info(wcpath).data['url'])
+    tmp_path = tempfile.mkdtemp()
+    diff = client.diff(tmp_path, '.', ignore_content_type=True)
+    shutil.rmtree(tmp_path)
+    return revnumber, svn_url, diff
+
+def ci_push(db_server, svn_url, revnumber, diff, tasknames, username, message):
+    # uuencode the diff in case it includes binaries
+    diff = diff.encode('uu')
+
+    # construct json documents
+    docs = []
+    # record (revision) document
+    rev_name = uuid.uuid4().get_hex()
+    record = {"_id": rev_name, "type": "record",  "description": message, "created": time.time(), 'author': username}
+    docs.append(record)
+
+    # cppcheck task document
+    cppcheck = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "cppcheck", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": revnumber, "diff": diff, "svn_url": svn_url}, "record_id": rev_name}
+    docs.append(cppcheck)
+
+    # 'fixme detector' task document
+    fixme = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "fixme", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": revnumber, "diff" : diff, "svn_url": svn_url}, "record_id": rev_name}
+    docs.append(fixme)
+
+    # rattest task documents
+    for taskname in tasknames:
+        taskid = uuid.uuid4().get_hex()
+        task = {"_id": taskid, "type": "task", "name": "rattest", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": revnumber, "diff": diff, "testname": taskname, "svn_url": svn_url}, "record_id": rev_name}
+        docs.append(task)
+
+    # post the docs with couch's the bulk document api
+    results_url = '/pytunia-ondemand/_design/pytunia/_rewrite/record/'
+    docs = {'docs': docs}
+    conn = httplib.HTTPConnection(db_server)
+    auth_string =  base64string = base64.encodestring('%s:%s' % (raw_input('Username: '), getpass.getpass('Password: ')))[:-1]
+    headers = {'Content-type': 'application/json', 'Authorization': 'Basic %s' % auth_string}
+    conn.request("POST", "/pytunia-ondemand/_bulk_docs", json.dumps(docs), headers)
+    print 'View results at http://' + db_server + results_url + rev_name
+
+if __name__ == '__main__':
+    import optparse
+    import getpass
+    parser = optparse.OptionParser()
+    parser.add_option('-s', '--server', dest='server', default='localhost:5984')
+    parser.add_option('-u', '--username', dest='username', default=getpass.getuser())
+    parser.add_option('-m', '--message', dest='message', default='No description')
+    (options, args) = parser.parse_args()
+
+    client = pysvn.Client()
+
+    # chance to abort if user forgot to add some files
+    print_status(client, wcpath)
+    if raw_input('Continue? (y/[n]) ') != 'y':
+        sys.exit(0)
+
+    # get diff and repository info
+    revnumber, svn_url, diff = get_changes(client, wcpath)
+    if(len(diff)) == 0:
+        print 'ratci: No changes in working copy'
+        sys.exit(0)
+
+    # get rattest names
+    testpath = os.path.join(wcpath, 'test/full')
+    tasknames = [str(os.path.basename(task.data['name'])) for task in client.ls(testpath)]
+
+    # push "revision" to the ci server
+    ci_push(options.server, svn_url, revnumber, diff, tasknames, options.username, options.message)
+
+

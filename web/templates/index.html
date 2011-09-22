@@ -12,23 +12,23 @@
   </tr>
    {#rows}
      <tr>
-      <td style="text-align:center;">
+      <td style="text-align:center;width:1%">
        {?success}
         <span title="Succeeded" style="display:inline-block;background:green;width:12px;">&nbsp;</span>
        {:else}
         <span title="Failed" style="display:inline-block;background:red;width:12px;color:white;font-weight:bold">!</span>
        {/success}
       </td>
-      <td style="text-align:center;" width="75">
+      <td style="text-align:center;display:inline">
        {?changeset_url}
         <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/trac.jpg"></a>
        {/changeset_url}
        &nbsp;
        <a href="{baseURL}/record/{name}">{name}</a>
       </td>
-      <td style="text-align:left;">{description}</td>
+      <td style="text-align:left;width:30%">{description}</td>
       <td style="text-align:center;">{ntasks}</td>
-      <td width=65%>
+      <td width=50%>
        <div width=100%>
         <span title="Succeeded: {pass}%" style="display:inline-block;width:{pass}%;background:green;margin:-3px;">&nbsp;</span>
         <span title="Failed: {fail}%" style="display:inline-block;width:{fail}%;background:red;margin:-3px;">&nbsp;</span>
