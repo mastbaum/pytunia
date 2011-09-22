@@ -78,6 +78,10 @@ def main(svn_url, changeset_url_base, start=1, stop=None):
         cppcheck = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "cppcheck", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url}, "record_id": rev_name}
         docs.append(cppcheck)
 
+        # fixme detector task document
+        fixme = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "fixme", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url}, "record_id": rev_name}
+        docs.append(fixme)
+
         # rattest task documents
         for taskname in tasknames:
             taskid = uuid.uuid4().get_hex()
