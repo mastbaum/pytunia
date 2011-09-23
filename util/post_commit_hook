@@ -1,0 +1,77 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import subprocess
+import time
+import uuid
+import json
+import svn_settings
+
+def help():
+    print '''post_commit_hook [rev] [repos]
+
+  rev - Revision number
+      e.g. 123
+
+  repos - Path to SVN repository
+      e.g. /var/lib/svn/myproject
+
+'''
+
+def system(cmd):
+    return subprocess.Popen([cmd], executable='/bin/bash', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+
+def main(rev, repos):
+    now = time.time()
+
+    # Extract revision metadata
+    description = system('svnlook log -r %s %s' % (rev, repos))
+    author = system('svnlook author -r %s %s' % (rev, repos))
+
+    svnlook = system('svnlook tree --full-paths -r %s "%s" "%s"' % (rev, repos, svn_settings.test_path))
+    tasknames = []
+    # todo: just use dir names
+    for line in svnlook.split('\n'):
+        if line.endswith('rattest.config\n'):
+            testname = line.replace(svn_settings.test_path, '').replace('/rattest.config\n','').strip('/')
+            tasknames.append(testname)
+
+    # generate json documents
+    docs = []
+    # record (revision) document
+    rev_name = 'r' + str(rev)
+    if not description or description == '':
+        description = ' '
+    changeset_url = svn_settings.changeset_url_base + str(rev)
+    record = {"_id": rev_name, "type": "record",  "description": description, "created": now, 'author': author, 'changeset_url': changeset_url}
+    docs.append(record)
+
+    # cppcheck task document
+    cppcheck = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "cppcheck", "created": now, "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_settings.svn_url}, "record_id": rev_name}
+    docs.append(cppcheck)
+
+    # fixme detector task document
+    fixme = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "fixme", "created": now, "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_settings.svn_url}, "record_id": rev_name}
+    docs.append(fixme)
+
+    # rattest task documents
+    for taskname in tasknames:
+        taskid = uuid.uuid4().get_hex()
+        task = {"_id": taskid, "type": "task", "name": "rattest", "created": now, "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_settings.svn_url, "testname": taskname}, "record_id": rev_name}
+        docs.append(task)
+
+    # post the docs with couch's the bulk document api
+    docs = {'docs': docs}
+    conn = httplib.HTTPConnection(svn_settings.db_host)
+    auth_string =  base64.encodestring('%s:%s' % (svn_settings.db_user, svn_settings.db_pass))[:-1]
+    headers = {'Content-type': 'application/json', 'Authorization': 'Basic %s' % auth_string}
+    conn.request("POST", "/" + svn_settings.db_name + "/_bulk_docs", json.dumps(docs), headers)
+
+if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        help()
+        sys.exit(1)
+    else:
+        main(*sys.argv[1:])
+
