@@ -10,9 +10,7 @@ exports.slave = new Type('slave', {
     fields: {
         fqdn: fields.string(),
         last_login: fields.string({required:false}),
-        password: fields.string(),
         enabled: fields.boolean(),
-        active: fields.boolean()
     },
     allow_extra_fields: true
 });
@@ -24,7 +22,6 @@ exports.task = new Type('task', {
         started: fields.string({required:false}),
         completed: fields.string({required:false}),
         slave: fields.string({required:false}),
-        platform: fields.string({required:false}),
         record_id: fields.string()
     },
     allow_extra_fields: true
