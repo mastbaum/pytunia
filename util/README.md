@@ -3,8 +3,25 @@ pytunia Utilities
 
 This directory contains additional programs intended for use with a pytunia server.
 
-gen_revisions
--------------
+`post_commit_hook`
+------------------
+
+Called from an SVN post-commit hook -- add contents of `post-commit` to the server`s post-commit script.
+
+Generates JSON documents for a revision and posts them to the pytunia server.
+
+Uses settings defined in `svn_settings.py`; `svn_settings_sample.py` is provided as an example. Settings include:
+
+    svn_co_url - URL for svn checkout by pytunia nodes
+    changeset_base_url - URL to view changesets. rev number is appended 
+    test_path - relative path of functional tests
+    db_host - Hostname:port of CouchDB server 
+    db_name - Name of CouchDB database
+    db_user - Username of CouchDB user 
+    db_password - Password for CouchDB user
+
+`gen_revisions`
+---------------
 
 Generates JSON to be pushed to the CouchDB server. Generally a post-commit hook should be adding documents to the DB as revisions roll in, but this is useful for build testing old revisions or if the commit hook fails.
 
@@ -21,8 +38,8 @@ Usage:
 
     $ kanso pushdata pytunia some_revisions.json
 
-wcpush
-------
+`wcpush`
+--------
 
 Send an SVN working copy off a pytunia server for testing. Requires the [pysvn](http://pysvn.tigris.org) package.
 

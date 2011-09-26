@@ -1,0 +1,7 @@
+#!/bin/sh
+
+REPOS="$1"
+REV="$2"
+
+/PATH/TO/post_commit_hook ${2} ${1}
+
