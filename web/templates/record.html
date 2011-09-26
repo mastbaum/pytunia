@@ -39,7 +39,7 @@
   {?rows}
    {#rows record_id=_id}
    <tr>
-    <td><a href="{baseURL}/task/{value.name}">{value.name}</a></td>
+    <td><a href="{baseURL}/task/{value.name}" onClick="window.location='{baseURL}/task/{value.name}'">{value.name}</a></td>
     <td>{value.slave}</td>
     <td>{value.started}</td>
     <td>{value.completed}</td>
@@ -67,7 +67,7 @@
     <td>
      {?value.completed}
       {#value.results.attach_links task_id=id}
-       <a href="#" onClick="window.location='/pytunia/{task_id}/{id}'">{name}</a><br/>
+       <a href="#" onClick="window.location='/snoplus/root/{task_id}/{id}'">{name}</a><br/>
       {/value.results.attach_links}
       <a href="index.html#results_{value._id}" class="boxy" title="Results">Results (raw)</a>
       <div id="results_{value._id}" style="display:none;background-color:#f5deb3;color:black;padding:15px"><pre style="color:black">{results_string}</pre></div>

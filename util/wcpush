@@ -13,15 +13,15 @@ import json
 try:
     import pysvn
 except ImportError:
-    print 'ratci: Unable to import pysvn (http://pysvn.tigris.org)'
+    print sys.argv[0] + ': Unable to import pysvn (http://pysvn.tigris.org)'
     sys.exit(1)
 
 try:
     wcpath = os.path.abspath(os.getenv('RATROOT'))
     # need to be in $RATROOT to use relative paths in svn diff
     os.chdir(wcpath)
-except KeyError:
-    print 'ratci: $RATROOT not set'
+except AttributeError:
+    print sys.argv[0] + ': $RATROOT not set'
     sys.exit(1)
 
 
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     # get diff and repository info
     revnumber, svn_url, diff = get_changes(client, wcpath)
     if(len(diff)) == 0:
-        print 'ratci: No changes in working copy'
+        print sys.argv[0] + ': No changes in working copy'
         sys.exit(0)
 
     # get rattest names
