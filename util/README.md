@@ -53,3 +53,12 @@ Note: putting these on-demand tests and the production build tests in the same d
         - message: description of the changes. defaults to 'No description'
         - server: pytunia server. defaults to localhost:5984. NOTE: no 'http://'!
 
+`rm_record`
+-----------
+
+Delete one or more records and all associated tasks from the database. It does not currently de-allocate the node, and cannot halt a job in progress. Deleting an in-progress task will result in undefined behavior.
+
+Uses the project settings to make the database connection, attempting to `import settings` from `.`, `..`, or the Python path. `settings.py` must be in one of those places. 
+
+    $ ./rm_record <record_id> [record_id_2 ...]
+

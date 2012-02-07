@@ -1,0 +1,27 @@
+#!/usr/bin/env python
+
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print 'Usage:', sys.argv[0], '<doc_id> [doc_id_2 ...]'
+        sys.exit(1)
+    else:
+        doc_ids = sys.argv[1:]
+
+    import settings
+    import dirt
+    import dirt.core.db
+    db = dirt.core.db.db.db
+
+    for doc_id in doc_ids:
+        print 'Deleting record document', doc_id
+        db.delete(db[doc_id])
+
+        for row in db.view('_design/'+settings.project_name+'/_view/tasks_by_record'):
+            if row.value['type'] == 'task' and row.value['record_id'] == doc_id:
+                print 'Deleting task document', row.value['_id'] 
+                db.delete(row.value)
+
