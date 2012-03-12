@@ -32,9 +32,9 @@ exports.tasks_by_name = {
         if (doc.type == 'task') {
             // rattests are special
             if (doc.kwargs && doc.kwargs.testname)
-                emit([doc.kwargs.testname, doc.record_id], doc);
+                emit([doc.kwargs.testname, doc.created], doc);
             else
-                emit([doc.name, doc.record_id], doc);
+                emit([doc.name, doc.created], doc);
         }
     }
 };

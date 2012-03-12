@@ -115,7 +115,7 @@ def main(git_url, shas=[]):
 
         docs.append(make_revision(git_url, rev, headers))
 
-    print docs
+    print json.dumps(docs)
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
