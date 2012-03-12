@@ -5,6 +5,7 @@
  <table width=90%>
   <tr>
    <th></th>
+   <th></th>
    <th style="text-align:center">ID</th>
    <th>Comments</th>
    <th>#</th>
@@ -21,9 +22,14 @@
       </td>
       <td style="text-align:center;display:inline">
        {?changeset_url}
-        <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/octocat.jpg"></a>
+        {?trac}
+         <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/trac.jpg"></a>
+        {:else}
+         <a href="{changeset_url}"><img border=0 src="{baseURL}/static/images/octocat.jpg"></a>
+        {/trac}
        {/changeset_url}
-       &nbsp;
+      </td>
+      <td>
        <a href="{baseURL}/record/{name}" onClick="window.location='{baseURL}/record/{name}'">{name}</a>
       </td>
       <td style="text-align:left;width:30%">{description}</td>
