@@ -6,9 +6,9 @@
 exports.summary = {
     map: function(doc) {
         if (doc.type == 'record')
-            emit([doc._id, 1], doc);
+            emit([doc.created, doc._id, 1], doc);
         if (doc.type == 'task')
-            emit([doc.record_id, 0], doc);
+            emit([doc.created, doc.record_id, 0], doc);
     }
 };
 

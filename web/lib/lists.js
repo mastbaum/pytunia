@@ -17,7 +17,7 @@ exports.index = function (head, req) {
             records[row.value._id] = {
                 changeset_url: row.value.changeset_url,
                 success: true,
-                name: row.key[0],
+                name: row.key[1],
                 description: description,
                 ntasks: 0,
                 pass: 0,
