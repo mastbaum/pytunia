@@ -12,63 +12,49 @@ def system(cmd, wd=None):
         cmd = ('cd %s && ' % wd) + cmd
     return subprocess.call([cmd], executable='/bin/bash', shell=True)
 
-def svn_co(url, rev, target, username=None, password=None, wd=None):
-    '''check out a revision from an svn server, optionally providing a
-    username and password. the arguments are parsed as::
+def git_clone(url, sha, target, wd=None):
+    '''clone a git repository. the arguments are parsed as::
 
-        cd [wd] && svn co [url] -r [rev] [target] --username=[username] \
-    --password=[password]
+        cd [wd] && git clone [url] [target] && git checkout [sha]
+
+    you may need to set up ssh keys if authentication is needed.
     '''
     if wd:
         target = os.path.join(wd, target)
     target = os.path.abspath(target)
     if not os.path.exists(target):
-        cmd = ' '.join(['svn co', url, '-r', rev, target])
-        if username: cmd = ' '.join([cmd, '--username=%s' % username])
-        if password: cmd = ' '.join([cmd, '--password=%s' % password])
+        cmd = ' '.join(['git clone', url, target, '&& cd %s && ' % target, 'git checkout', sha])
         return system(cmd)
     else:
         return None
 
 # main task function
-def execute(testname=None, diff=None, svn_url=None, revnumber=None, svn_user=None, svn_pass=None, scons_options='-j2'):
-    '''check out a revision with svn, optionally patch with a diff, build it 
-    with scons, and return back the rattest result files.
+def execute(testname=None, git_url=None, sha=None, scons_options='-j2'):
+    '''clone a git repository, build it with scons, and return back the
+    rattest result files.
     '''
     if testname is None:
         return {'success': False, 'reason': 'missing test name'}
-    if not revnumber:
-        return {'success': False, 'reason': 'missing revision number'}
-    if not svn_url:
-        return {'success': False, 'reason': 'missing svn url'}
-
-    revnumber = str(revnumber)
+    if not sha:
+        return {'success': False, 'reason': 'missing revision id'}
+    if not git_url:
+        return {'success': False, 'reason': 'missing git url'}
 
     # temporary working directory
     wd = str(uuid.uuid4())
     os.mkdir(wd)
 
     # get the code
-    ret = svn_co(svn_url, revnumber, revnumber, username=svn_user, password=svn_pass, wd=wd)
+    ret = git_clone(git_url, sha, sha, wd=wd)
     if ret is None or ret != 0:
-        return {'success': False, 'reason': 'svn co failed'}
-    wcpath = os.path.abspath(os.path.join(wd, revnumber))
-    env_file = os.path.join(wcpath, 'env.sh')
+        return {'success': False, 'reason': 'git clone failed'}
 
-    # patch if a diff is provided
-    # diffs are uuencoded to be json-friendly
-    if diff is not None:
-        diff_filename = os.path.join(wcpath, wd + '.diff')
-        with open(diff_filename, 'w') as diff_file:
-            diff_file.write(diff.decode('uu'))
-        cmd = 'patch --binary -p0 -i %s' % diff_filename
-        ret = system(cmd, wcpath)
-        if ret != 0:
-            return {'success': False, 'reason': 'failed to apply patch'}
+    wcpath = os.path.abspath(os.path.join(wd, sha))
 
     # build with scons
     results = {'success': True, 'attachments': []}
     system('./configure', wcpath)
+    env_file = os.path.join(wcpath, 'env.sh')
     ret = system('source %s && scons %s &> build_log.txt' % (env_file, scons_options), wcpath)
     results['scons_returncode'] = ret
     if ret != 0:
@@ -104,5 +90,5 @@ if __name__ == '__channelexec__':
     channel.send(results)
 
 if __name__ == '__main__':
-    print execute(testname=sys.argv[1], svn_url=sys.argv[2], revnumber=sys.argv[3])
+    print execute(testname=sys.argv[1], git_url=sys.argv[2], sha=sys.argv[3])
 

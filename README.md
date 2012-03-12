@@ -2,7 +2,7 @@ pytunia
 ========
 pytunia is a platform for source code quality testing/continuous integration based on the [dirt](http://github.com/mastbaum/dirt) package.
 
-In addition to testing compilation on various platform (a la buildbot), it can perform functional tests (scripted in Python), static tests, or any other task describable in a Python module. The provided tasks assume SVN as the VCS and scons as the build system, but these are easily modified for your application.
+In addition to testing compilation on various platform (a la buildbot), it can perform functional tests (scripted in Python), static tests, or any other task describable in a Python module. The provided tasks assume git as the VCS and scons as the build system, but these are easily modified for your application. Branch "svn" provides an SVN-compatible version.
 
 These tasks are run on a grid of slave nodes, which need not share any resources, have zero state, and run no client-side software.
 
@@ -63,8 +63,8 @@ Example:
         "name": "cppcheck",
         "created": [creation time (seconds since epoch)],
         "kwargs": {
-            "revnumber": [SVN revision number to check out],
-            "svn_url": [SVN repository URL]
+            "sha": [git revision id to test],
+            "git_url": [git repository URL]
         },
         "platform": "[target platform (build only)]"
         "record_id": "[associated record id]"
@@ -79,8 +79,8 @@ Example:
         "created": 1315347385,
         "platform": "linux",
         "kwargs": {
-            "revnumber": 601,
-            "svn_url": "https://www.snolab.ca/snoplus/svn/sasquatch/dev/rat"
+            "revnumber": "89e7cfd548133f0cab18bebc74a7c13eec713bc3",
+            "git_url": "git@github.com:mastbaum/pytunia"
         },
         "platform": "linux"
         "record_id": "r123"

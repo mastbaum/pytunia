@@ -3,7 +3,6 @@ import sys
 import shutil
 import uuid
 import subprocess
-from xml.etree.ElementTree import ElementTree
 
 def system(cmd, wd=None):
     '''a wrapper for subprocess.call, which executes cmd in working directory
@@ -13,68 +12,43 @@ def system(cmd, wd=None):
     print cmd
     return subprocess.call([cmd], executable='/bin/bash', shell=True)
 
-def svn_co(url, rev, target, username=None, password=None, wd=None):
-    '''check out a revision from an svn server, optionally providing a
-    username and password. the arguments are parsed as::
+def git_clone(url, sha, target, wd=None):
+    '''clone a git repository. the arguments are parsed as::
 
-        cd [wd] && svn co [url] -r [rev] [target] --username=[username] \
-    --password=[password]
+        cd [wd] && git clone [url] [target] && git checkout [sha]
+
+    you may need to set up ssh keys if authentication is needed.
     '''
     if wd:
         target = os.path.join(wd, target)
     target = os.path.abspath(target)
     if not os.path.exists(target):
-        cmd = ' '.join(['svn co', url, '-r', rev, target])
-        if username: cmd = ' '.join([cmd, '--username=%s' % username])
-        if password: cmd = ' '.join([cmd, '--password=%s' % password])
+        cmd = ' '.join(['git clone', url, target, '&& cd %s && ' % target, 'git checkout', sha])
         return system(cmd)
     else:
         return None
 
-def svn_blame(fname, rev, username=None, password=None, wd=None):
-    '''get annotated source from an svn server, optionally providing a
-    username and password. the arguments are parsed as::
-
-        cd [wd] && svn blame --xml [file]@[rev]
-    '''
-    cmd = 'svn blame --xml %s@%s' % (fname, rev)
-    if username: cmd = ' '.join([cmd, '--username=%s' % username])
-    if password: cmd = ' '.join([cmd, '--password=%s' % password])
-    cmd = cmd + ' &> blame.xml'
-    return system(cmd, wd), os.path.join(wd, 'blame.xml')
-
-def execute(svn_url=None, diff=None, svn_user=None, svn_pass=None, revnumber=None):
-    if not revnumber:
-        return {'success': False, 'reason': 'missing revision number'}
-    if not svn_url:
-        return {'success': False, 'reason': 'missing svn url'}
-
-    revnumber = str(revnumber)
+def execute(git_url=None, sha=None):
+    if not sha:
+        return {'success': False, 'reason': 'missing revision id'}
+    if not git_url:
+        return {'success': False, 'reason': 'missing git url'}
 
     # temporary working directory
     wd = str(uuid.uuid4())
     os.mkdir(wd)
 
     # get the code
-    ret = svn_co(svn_url, revnumber, revnumber, username=svn_user, password=svn_pass, wd=wd)
+    ret = git_clone(git_url, sha, sha, wd=wd)
     if ret is None or ret != 0:
-        return {'success': False, 'reason': 'svn co failed'}
-    wcpath = os.path.abspath(os.path.join(wd, revnumber))
+        shutil.rmtree(os.path.abspath(wd))
+        return {'success': False, 'reason': 'git clone failed'}
 
-    # patch if a diff is provided
-    # diffs are uuencoded to be json-friendly
-    if diff is not None:
-        diff_filename = os.path.join(wcpath, wd + '.diff')
-        with open(diff_filename, 'w') as diff_file:
-            diff_file.write(diff.decode('uu'))
-        cmd = 'patch --binary -p0 -i %s' % diff_filename
-        ret = system(cmd, wcpath)
-        if ret != 0:
-            return {'success': False, 'reason': 'failed to apply patch'}
+    wcpath = os.path.abspath(os.path.join(wd, sha))
 
     # find instances of fixme
     results = {'success': True, 'attachments': []}
-    ret = system('grep -irn --color --exclude=*.svn-base fixme . &> fixme.txt', wcpath)
+    ret = system('grep -irn --exclude=*.git --exclude=*.svn fixme . &> fixme.txt', wcpath)
     results['grep_returncode'] = ret
 
     # parse grep output into formatted html page
@@ -85,23 +59,14 @@ def execute(svn_url=None, diff=None, svn_user=None, svn_pass=None, revnumber=Non
         fo.write('<th>Code</th>\n<th>Last Edited</th>\n</tr>')
         with open(os.path.join(wcpath,'fixme.txt'),'r') as fi:
             for item in fi.readlines():
-                fname = item.split(':', 2)[0]
-                line = item.split(':', 2)[1]
-                code = item.split(':', 2)[2].lstrip()
+                fname, line, code = [x.lstrip() for x in item.split(':', 2)]
                 fo.write('<tr>\n<td>%s</td>\n<td>%s</td>\n<td>%s</td>\n' % (fname, line, code))
 
-                last_revision = ''
-                last_author = ''
-                ret, blamefile = svn_blame(fname, revnumber, wd=wcpath)
-                if ret == 0:
-                    with open(blamefile, 'r') as fb:
-                        tree = ElementTree()
-                        tree.parse(fb)
-                        for elem in tree.findall('target/entry'):
-                            if elem.attrib['line-number'] == str(line):
-                                last_revision = elem.find('commit').attrib['revision']
-                                last_author = elem.find('commit/author').text
-                fo.write('<td>%s, r%s</td>\n</tr>\n' % (last_author, last_revision))
+                cmd = subprocess.Popen(['git', 'blame', '-p', '-L', '%s,%s' % (line, line), fname], stdout=subprocess.PIPE, cwd=wcpath)
+                blame = cmd.communicate()[0].splitlines()
+                last_rev = blame[0].split()[0]
+                last_author = ' '.join(blame[1].split()[1:])
+                fo.write('<td>%s, %s</td>\n</tr>\n' % (last_author, last_rev))
 
         fo.write('</table>\n</body>\n</html>')
 
@@ -123,5 +88,5 @@ if __name__ == '__channelexec__':
     channel.send(results)
 
 if __name__ == '__main__':
-    print execute(svn_url=sys.argv[1], revnumber=sys.argv[2])
+    print execute(git_url=sys.argv[1], sha=sys.argv[2])
 
