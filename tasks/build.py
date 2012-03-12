@@ -24,7 +24,7 @@ def git_clone(url, sha, target, wd=None):
         target = os.path.join(wd, target)
     target = os.path.abspath(target)
     if not os.path.exists(target):
-        cmd = ' '.join(['git clone', url, target, '&& cd %s && ' % target, 'git checkout', sha])
+        cmd = ' '.join(['git clone', url, target, '&& cd %s && ' % target, 'git checkout', sha, '&> /dev/null'])
         return system(cmd)
     else:
         return None

@@ -3,23 +3,6 @@ pytunia Utilities
 
 This directory contains additional programs intended for use with a pytunia server.
 
-`post_commit_hook`
-------------------
-
-Called from an SVN post-commit hook -- add contents of `post-commit` to the server`s post-commit script.
-
-Generates JSON documents for a revision and posts them to the pytunia server.
-
-Uses settings defined in `svn_settings.py`; `svn_settings_sample.py` is provided as an example. Settings include:
-
-    svn_co_url - URL for svn checkout by pytunia nodes
-    changeset_base_url - URL to view changesets. rev number is appended 
-    test_path - relative path of functional tests
-    db_host - Hostname:port of CouchDB server 
-    db_name - Name of CouchDB database
-    db_user - Username of CouchDB user 
-    db_password - Password for CouchDB user
-
 `gen_revisions`
 ---------------
 
@@ -47,11 +30,12 @@ Uses pysvn to generate a diff and get repo metadata. uuencodes the diff so it is
 
 Note: putting these on-demand tests and the production build tests in the same database is possible, but probably not wise. Instead, run a second master with a separate database.
 
-    $ ./wcpush [-u username] [-m message] [-s server]
+    $ ./wcpush [-m message] [-s server] [-b branch] [-r repository] 
 
-        - username: displayed with results. defaults to username on current system.
         - message: description of the changes. defaults to 'No description'
         - server: pytunia server. defaults to localhost:5984. NOTE: no 'http://'!
+        - branch: git branch to test
+        - repository: git repository to test (i.e. git@github.com:username/repository)
 
 `rm_record`
 -----------

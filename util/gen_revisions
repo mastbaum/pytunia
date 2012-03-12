@@ -6,96 +6,121 @@ import subprocess
 import time
 import uuid
 import json
+import httplib
+import urllib
+import getpass
+import base64
 
-def parse_svn_log(svn_url):
-    '''extract revision number, author, and description from svn log output,
-    and turn it into a dictionary.
-    '''
-    revisions = {}
-    svn_log = subprocess.Popen(['svn', 'log', svn_url], stdout=subprocess.PIPE).communicate()[0]
-    with open('svn_log_temp','w') as f:
-        f.write(svn_log)
-    with open('svn_log_temp','r') as f:
-        line = f.readline()
-        while line:
-            # better done with regex...
-            if line[:10] == ('-' * 10):
-                line = f.readline()
-                if line == '':
-                    break
-                meta = [i.strip(' ') for i in line.split('|')]
-                rev = int(meta[0][1:])
-                author = meta[1]
-                revisions[rev] = {'author': author}
+def make_revision(git_url, rev, headers):
+    # construct json documents
+    docs = []
 
-                # burn a few lines
-                line = f.readline()
-                line = f.readline()
-                description = []
-                while line[:10] != ('-' * 10):
-                    description.append(line)
-                    line = f.readline()
+    sha = rev['sha']
+    created = time.time()
+    user, repo = git_url.split(':')[1].split('/')
 
-                description = '\n'.join(description).rstrip('\n')
-                revisions[rev]['description'] = description
+    # record (revision) document
+    record = {
+        '_id': sha,
+        'type': 'record',
+        'description': rev['commit']['message'],
+        'created': created,
+        'author': rev['commit']['committer']['name'],
+        'changeset_url': ('https://github.com/%s/%s/commit/' % (user, repo)) + sha
+    }
 
-    os.remove('svn_log_temp')
-    return revisions
+    docs.append(record)
 
-def main(svn_url, changeset_url_base, start=1, stop=None):
+    # cppcheck task document
+    cppcheck = {
+        '_id': uuid.uuid4().get_hex(),
+        'type': 'task',
+        'name': 'cppcheck',
+        'created': created,
+        'platform': 'linux',
+        'kwargs': {
+            'sha': sha,
+            'git_url': git_url
+        },
+        'record_id': sha
+    }
+
+    docs.append(cppcheck)
+
+    # fixme detector task document
+    fixme = {
+        '_id': uuid.uuid4().get_hex(),
+        'type': 'task',
+        'name': 'fixme',
+        'created': created,
+        'platform': 'linux',
+        'kwargs': {
+            'sha': sha,
+            'git_url': git_url
+        },
+        'record_id': sha
+    }
+
+    docs.append(fixme)
+
+    # get task names with github api
+    tasknames = []
+    conn = httplib.HTTPSConnection('api.github.com')
+    tree_url = '/repos/%s/%s/git/trees/' % (user, repo)
+    req = conn.request('GET', tree_url + sha + '?' + urllib.urlencode({'recursive':1}), headers=headers)
+    resp = conn.getresponse()
+    tree = json.loads(resp.read())['tree']
+
+    test_path = 'test/full'
+    for item in tree:
+        if item['type'] == 'tree' and item['path'][:len(test_path)] == test_path and item['path'] != test_path:
+            tasknames.append(item['path'].split('/')[-1])
+
+    # rattest task documents
+    for taskname in tasknames:
+        taskid = uuid.uuid4().get_hex()
+        task = {
+            '_id': uuid.uuid4().get_hex(),
+            'type': 'task',
+            'name': 'rattest',
+            'created': created,
+            'platform': 'linux',
+            'kwargs': {
+                'sha': sha,
+                'git_url' : git_url,
+                'testname': taskname
+            },
+            'record_id': sha
+        }
+
+        docs.append(task)
+
+    return docs
+
+def main(git_url, shas=[]):
     '''loop over the requested revisions to generate json to load into the
     pytunia database.
     '''
-    revisions = parse_svn_log(svn_url)
-    if stop is None:
-        stop = max(revisions)
+    user, repo = git_url.split(':')[1].split('/')
 
-    start = int(start)
-    stop = int(stop)
+    gh_user = raw_input('GitHub Username: ')
+    auth_string =  base64string = base64.encodestring('%s:%s' % (gh_user, getpass.getpass('GitHub Password: ')))[:-1]
+    headers = {'Content-type': 'application/json', 'Authorization': 'Basic %s' % auth_string}
 
     docs = []
-    for rev in range(start, stop):
-        # revisions can be missing
-        if rev not in revisions:
-            continue
+    for sha in shas:
+        conn = httplib.HTTPSConnection('api.github.com')
+        req = conn.request('GET', '/repos/%s/%s/commits/%s' % (user, repo, sha), headers=headers)
+        rev = json.loads(conn.getresponse().read())
 
-        # get task names with svn list
-        tasknames = []
-        for item in subprocess.Popen(['svn', 'list', svn_url + '/test/full', '-r', str(rev)], stdout=subprocess.PIPE).communicate()[0].split():
-            tasknames.append(item.rstrip('/'))
+        docs.append(make_revision(git_url, rev, headers))
 
-        # record (revision) document
-        rev_name = 'r' + str(rev)
-        description  = revisions[rev]['description']
-        if not description:
-            description = ' '
-        changeset_url = changeset_url_base + str(rev)
-        author = revisions[rev]['author']
-        record = {"_id": rev_name, "type": "record",  "description": description, "created": time.time(), 'author': author, 'changeset_url': changeset_url}
-        docs.append(record)
-
-        # cppcheck task document
-        cppcheck = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "cppcheck", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url}, "record_id": rev_name}
-        docs.append(cppcheck)
-
-        # fixme detector task document
-        fixme = {"_id": uuid.uuid4().get_hex(), "type": "task", "name": "fixme", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url}, "record_id": rev_name}
-        docs.append(fixme)
-
-        # rattest task documents
-        for taskname in tasknames:
-            taskid = uuid.uuid4().get_hex()
-            task = {"_id": taskid, "type": "task", "name": "rattest", "created": time.time(), "platform": "linux", "kwargs": {"revnumber": rev, "svn_url" : svn_url, "testname": taskname}, "record_id": rev_name}
-            docs.append(task)
-
-    docs_json = json.dumps(docs)
-
-    print docs_json
+    print docs
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print 'Usage:', sys.argv[0], '<svn url> <changeset base url> [start_rev=1] [end_rev=HEAD]'
+    if len(sys.argv) < 3:
+        print 'Usage:', sys.argv[0], '<git url> <sha1> [sha2 sha3 ...]'
         sys.exit(1)
     else:
-        main(*sys.argv[1:])
+        main(sys.argv[1], sys.argv[2:])
 
