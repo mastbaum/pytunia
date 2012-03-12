@@ -14,21 +14,45 @@ exports.index = function (head, req) {
             var description = row.value.description;
             if (row.value.description.length > clip_length)
                 description = description.substring(0, clip_length) + '...';
-            records[row.value._id] = {
-                changeset_url: row.value.changeset_url,
-                success: true,
-                name: row.key[1],
-                description: description,
-                ntasks: 0,
-                pass: 0,
-                fail: 0,
-                inprogress: 0,
-                waiting: 0
-            };
+            if (!(records[row.value._id])) {
+                records[row.value._id] = {
+                    changeset_url: row.value.changeset_url,
+                    trac: false,
+                    success: true,
+                    name: row.key[1],
+                    description: description,
+                    ntasks: 0,
+                    pass: 0,
+                    fail: 0,
+                    inprogress: 0,
+                    waiting: 0
+                }
+            }
+            else {
+                records[row.value._id].changeset_url = row.value.changeset_url;
+                //records[row.value._id].success: true,
+                records[row.value._id].name = row.key[1];
+                records[row.value._id].description = description;
+            }
         }
-        else {
+        else if (row.value.type == 'task') {
             var r_id = row.value.record_id;
-            records[r_id].ntasks += 1;
+
+            if (!(records[r_id])) {
+                records[r_id] = {
+                    trac: row.value.kwargs.svn_url,
+                    success: true,
+                    ntasks: 1,
+                    pass: 0,
+                    fail: 0,
+                    inprogress: 0,
+                    waiting: 0
+                };
+            }
+            else {
+                records[r_id].ntasks += 1;
+            }
+
             if (row.value.completed) {
                 if (row.value.results.success)
                     records[r_id].pass += 1;
@@ -82,7 +106,7 @@ exports.record = function (head, req) {
     row = getRow();
     name = row.key[0];
     _id = row.value._id;
-    description = row.value.description;
+    description = row.value.description.replace(/(\r\n|\r|\n)/g, "<br/>");
     author = row.value.author;
     changeset_url = row.value.changeset_url;
 
