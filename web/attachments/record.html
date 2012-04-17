@@ -51,7 +51,7 @@
     };
 
     $("#header").load("header.html");
-    var db_name = 'pytunia-ondemand-test';
+    var db_name = 'pytunia';
     var db = $.couch.db(db_name);
     var base_url = [$.couch.urlPrefix, db_name, ''].join('/');
     var record_id = get_parameter_by_name('id');
