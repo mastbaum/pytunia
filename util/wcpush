@@ -5,21 +5,22 @@ import sys
 import time
 import uuid
 import base64
-import tempfile
 import httplib
-import urllib
 import json
+import subprocess
+import shutil
 
-def ci_push(db_url, git_url, changeset_base_url, tree_base_url, test_path, sha, author, message, headers):
+def ci_push(db_url, git_url, changeset_base_url, tasknames, sha, author, message):
     # construct json documents
     docs = []
+    created = time.time()
 
     # record (revision) document
     record = {
         '_id': sha,
         'type': 'record',
         'description': message,
-        'created': time.time(),
+        'created': created,
         'author': author,
         'changeset_url': changeset_base_url + sha
     }
@@ -31,7 +32,7 @@ def ci_push(db_url, git_url, changeset_base_url, tree_base_url, test_path, sha, 
         '_id': uuid.uuid4().get_hex(),
         'type': 'task',
         'name': 'cppcheck',
-        'created': time.time(),
+        'created': created,
         'platform': 'linux',
         'kwargs': {
             'sha': sha,
@@ -47,7 +48,7 @@ def ci_push(db_url, git_url, changeset_base_url, tree_base_url, test_path, sha, 
         '_id': uuid.uuid4().get_hex(),
         'type': 'task',
         'name': 'fixme',
-        'created': time.time(),
+        'created': created,
         'platform': 'linux',
         'kwargs': {
             'sha': sha,
@@ -58,17 +59,6 @@ def ci_push(db_url, git_url, changeset_base_url, tree_base_url, test_path, sha, 
 
     docs.append(fixme)
 
-    # get task names with github api
-    tasknames = []
-    conn = httplib.HTTPSConnection('api.github.com')
-    req = conn.request('GET', tree_base_url + sha + '?' + urllib.urlencode({'recursive':1}), headers=headers)
-    resp = conn.getresponse()
-    tree = json.loads(resp.read())['tree']
-
-    for item in tree:
-        if item['type'] == 'tree' and item['path'][:len(test_path)] == test_path and item['path'] != test_path:
-            tasknames.append(item['path'].split('/')[-1])
-
     # rattest task documents
     for taskname in tasknames:
         taskid = uuid.uuid4().get_hex()
@@ -76,7 +66,7 @@ def ci_push(db_url, git_url, changeset_base_url, tree_base_url, test_path, sha, 
             '_id': uuid.uuid4().get_hex(),
             'type': 'task',
             'name': 'rattest',
-            'created': time.time(),
+            'created': created,
             'platform': 'linux',
             'kwargs': {
                 'sha': sha,
@@ -106,41 +96,34 @@ if __name__ == '__main__':
     test_path = 'test/full'
     parser = optparse.OptionParser()
     parser.add_option('-s', '--server', dest='server', default='localhost:5984')
+    parser.add_option('-u', '--username', dest='username', default=getpass.getuser())
     parser.add_option('-r', '--repository', dest='repo', default='DEFAULT_REPO')
     parser.add_option('-b', '--branch', dest='branch', default='master')
     parser.add_option('-m', '--message', dest='message', default='No description')
     (options, args) = parser.parse_args()
 
-    # get sha for latest commit
-    conn = httplib.HTTPSConnection('api.github.com')
-    gh_user = raw_input('GitHub Username: ')
-    auth_string =  base64string = base64.encodestring('%s:%s' % (gh_user, getpass.getpass('GitHub Password: ')))[:-1]
-    headers = {'Content-type': 'application/json', 'Authorization': 'Basic %s' % auth_string}
-    conn.request('GET', '/repos/%s/%s/branches' % (gh_user, options.repo), headers=headers)
-    branches = json.loads(conn.getresponse().read())
+    git_url = 'git@github.com:%s/%s' % (options.username, options.repo)
+    changeset_base_url = 'https://github.com/%s/%s/commit/' % (options.username, options.repo)
 
-    sha = None
-    for branch in branches:
-        try:
-            if branch['name'] == options.branch:
-                sha = branch['commit']['sha']
-                break
-        except TypeError:
-            print 'Unable to access branches for %s/%s' % (gh_user, options.repo)
-            sys.exit(1)
+    # clone to a temporary working directory
+    wd = os.path.abspath(str(uuid.uuid4()))
+    os.mkdir(wd)
 
-    if sha is None:
-        print 'Error finding commit data for branch', options.branch
-        sys.exit(1)
+    cmd = subprocess.Popen(['git', 'clone', git_url], cwd=wd).wait()
+    repo_path = os.path.join(wd, options.repo)
+    cmd = subprocess.Popen(['git', 'checkout', options.branch], cwd=repo_path).wait()
+    cmd = subprocess.Popen('git show --pretty=oneline'.split(), cwd=repo_path, stdout=subprocess.PIPE)
+    cmd.wait()
+    sha = cmd.communicate()[0].split()[0]
+    tasknames = os.listdir(os.path.join(repo_path, test_path))
 
     # chance to abort
-    if raw_input('Run build tests on %s/%s/%s @ %s? y/[n] ' % (gh_user, options.repo, options.branch, sha)) != 'y':
+    if raw_input('Ready to run build tests on %s/%s/%s @ %s\nContinue? y/[n] ' % (options.username, options.repo, options.branch, sha)) != 'y':
         sys.exit(0)
 
     # push to the pytunia server
-    git_url = 'git@github.com:%s/%s' % (gh_user, options.repo)
-    changeset_base_url = 'https://github.com/%s/%s/commit/' % (gh_user, options.repo)
-    tree_base_url = '/repos/%s/%s/git/trees/' % (gh_user, options.repo)
+    ci_push(options.server, git_url, changeset_base_url, tasknames, sha, options.username, options.message)
 
-    ci_push(options.server, git_url, changeset_base_url, tree_base_url, test_path, sha, gh_user, options.message, headers)
+    # remove temporay wd
+    shutil.rmtree(wd)
 
