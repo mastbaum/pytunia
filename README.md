@@ -14,7 +14,6 @@ Dependencies
 ------------
 
 * dirt (http://github.com/mastbaum/dirt)
-* kanso (http://kansojs.org)
 
 Installation
 ------------
