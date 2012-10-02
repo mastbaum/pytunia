@@ -9,6 +9,10 @@ couchdb_host = 'http://localhost:5984'
 # couchdb database name
 couchdb_dbname = 'pytunia'
 
+## Load balancer
+from dirt.core import load_balance
+load_balancer = load_balance.load
+
 ## Node configuration defaults
 # When adding a new node, enable it by default?
 node_enable_default = True

@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+# clear the allocation status of one or more nodes in the db
+#
+# Usage: ./dealloc_nodes [node1 node2 ...]
+#
+#    Where nodeN is an FQDN. No arguments means all nodes 
+#
+
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
+if __name__ == '__main__':
+    node_ids = sys.argv[1:]
+
+    import settings
+    from dirt.core.db import db
+
+    nodes = db.get_nodes()
+    for node in nodes:
+        if len(sys.argv) == 1 or nodes[node]['fqdn'] in node_ids:
+            print 'Clearing allocations for', nodes[node]['fqdn']
+            try:
+                del nodes[node]['alloc']
+                db.save(nodes[node])
+            except KeyError:
+                pass
+

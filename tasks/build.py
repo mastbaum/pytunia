@@ -13,13 +13,15 @@ def system(cmd, wd=None):
     print cmd
     return subprocess.call([cmd], executable='/bin/bash', shell=True)
 
-def git_clone(url, sha, target, wd=None):
+def git_clone(url, sha, target=None, wd=None):
     '''clone a git repository. the arguments are parsed as::
 
         cd [wd] && git clone [url] [target] && git checkout [sha]
 
     you may need to set up ssh keys if authentication is needed.
     '''
+    if target is None:
+        target = sha
     if wd:
         target = os.path.join(wd, target)
     target = os.path.abspath(target)
@@ -29,8 +31,16 @@ def git_clone(url, sha, target, wd=None):
     else:
         return None
 
+def git_merge(url, ref, wd=None):
+    '''Merge ref sha from a remote at url into the repo at wd'''
+    cmd = ' '.join(['git remote add fork', url])
+    system(cmd, wd)
+
+    cmd = ' '.join(['git pull fork', ref, '&> /dev/null'])
+    return system(cmd, wd)
+
 # main task function
-def execute(git_url=None, sha=None, scons_options=''):
+def execute(git_url=None, sha=None, base_repo_url=None, base_repo_ref=None, scons_options='-j1'):
     '''check out a revision with git, build it with scons, and return back the
     build log.
     '''
@@ -39,17 +49,26 @@ def execute(git_url=None, sha=None, scons_options=''):
     if not git_url:
         return {'success': False, 'reason': 'missing git url'}
 
+    if base_repo_url and not base_repo_ref or base_repo_ref and not base_repo_url:
+        return {'success': False, 'reason': 'incomplete base repository specification for merge'}
+
     # temporary working directory
     wd = str(uuid.uuid4())
     os.mkdir(wd)
 
     # get the code
-    ret = git_clone(git_url, sha, sha, wd=wd)
+    ret = git_clone(git_url, sha, wd=wd)
     if ret is None or ret != 0:
         shutil.rmtree(os.path.abspath(wd))
-        return {'success': False, 'reason': 'git clone failed'}
+        return {'success': False, 'reason': 'git clone failed', 'code': str(ret)}
 
     wcpath = os.path.abspath(os.path.join(wd, sha))
+
+    if base_repo_url is not None:
+        ret = git_merge(base_repo_url, base_repo_ref, wcpath)
+        if ret is None or ret != 0:
+            shutil.rmtree(os.path.abspath(wd))
+            return {'success': False, 'reason': 'git merge failed', 'code': str(ret)}
 
     # build with scons
     results = {'success': True, 'attachments': []}
@@ -82,5 +101,12 @@ if __name__ == '__channelexec__':
     channel.send(results)
 
 if __name__ == '__main__':
-    print execute(git_url=sys.argv[1], sha=sys.argv[2])
+    if len(sys.argv) > 3:
+        base_repo_url = sys.argv[3]
+        base_repo_ref = sys.argv[4]
+    else:
+        base_repo_url = None
+        base_repo_ref = None
+
+    print execute(git_url=sys.argv[1], sha=sys.argv[2], base_repo_url=base_repo_url, base_repo_ref=base_repo_ref)
 
